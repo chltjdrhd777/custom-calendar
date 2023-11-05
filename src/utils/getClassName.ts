@@ -5,7 +5,7 @@ export function getClassName(classList: (string | { [key: string]: boolean })[])
     if (className instanceof Object) {
       const entries = Object.entries(className);
       for (let [key, value] of entries) {
-        if (value === true) result.push(key);
+        value === true && result.push(key);
       }
     } else {
       result.push(className);

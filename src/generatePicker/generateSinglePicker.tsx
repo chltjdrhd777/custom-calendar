@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { css, styled } from 'styled-components';
-import { AiOutlineCalendar } from 'react-icons/ai';
+import { AiOutlineCalendar, AiFillCloseCircle } from 'react-icons/ai';
 import { getDays } from '../utils/getDays';
 import { getSignleDateInfo } from '../utils/getSingleDateInfo';
 import dayjs from 'dayjs';
+import { getDates } from '../utils/getDates';
+import { useHandleClickOutside } from '../hook/useHandleClickOutside';
 
 function generateSignlePicker() {
   const SinglePicker = () => {
@@ -16,26 +18,33 @@ function generateSignlePicker() {
       month: '',
       date: '',
     });
+    const [rangeInputIcon, setRangeInputIcon] = useState<'calendar' | 'clear'>('calendar');
 
     const DateRangeRef = useRef<null | HTMLDivElement>(null);
     const InputRef = useRef<null | HTMLInputElement>(null);
+    const ContainerRef = useRef<null | HTMLDivElement>(null);
+
     const { prevDates, currentDates, nextDates } = getSignleDateInfo({
       targetTime,
+      setTargetTime,
       setInputValue,
+      selectedValue,
+      setSelectedValue,
+      setIsInputFocused,
     });
 
     const days = useMemo(() => getDays(), []);
-    const dates = useMemo(() => {
-      const rows = [];
-      const mergedDates = [...prevDates, ...currentDates, ...nextDates];
-
-      for (let i = 0; i < mergedDates.length; i += 7) {
-        const slice = mergedDates.slice(i, i + 7);
-
-        rows.push(<tr key={i}>{slice}</tr>);
-      }
-      return rows;
-    }, []);
+    const dates = useMemo(() => getDates({ prevDates, currentDates, nextDates }), [prevDates, currentDates, nextDates]);
+    const headerView = (locale?: string) => {
+      const month = dayjs().month(targetTime.month()).format('MMM');
+      const year = targetTime.year();
+      return (
+        <>
+          <span>{month}</span>
+          <span>{year}</span>
+        </>
+      );
+    };
 
     const getDefaultValue = () => {
       const valueList = [inputValue.year, inputValue.month, inputValue.date];
@@ -43,13 +52,18 @@ function generateSignlePicker() {
     };
 
     useEffect(() => {
-      if (inputValue.year || inputValue.month || inputValue.date) {
-        InputRef.current?.focus();
-      }
+      // if (inputValue.year || inputValue.month || inputValue.date) {
+      //   InputRef.current?.focus();
+      // }
     }, [inputValue]);
 
+    useHandleClickOutside(ContainerRef, () => {
+      InputRef.current?.blur();
+      setIsInputFocused(false);
+    });
+
     return (
-      <Containter>
+      <Containter ref={ContainerRef}>
         <DateRange
           ref={DateRangeRef}
           onClick={() => {
@@ -69,26 +83,40 @@ function generateSignlePicker() {
                 onFocus={() => {
                   setIsInputFocused(true);
                 }}
-                onBlur={() => {
-                  setIsInputFocused(false);
-                }}
               />
-              <AiOutlineCalendar />
+
+              <RangeInputIcon
+                className="input-icon"
+                rangeInputIcon={rangeInputIcon}
+                onMouseEnter={() => {
+                  selectedValue ? setRangeInputIcon('clear') : setRangeInputIcon('calendar');
+                }}
+                onMouseLeave={() => {
+                  setRangeInputIcon('calendar');
+                }}
+              >
+                <AiOutlineCalendar className="calendar" />
+                <AiFillCloseCircle
+                  className="clear"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedValue('');
+                    setInputValue((prev) => ({ ...prev, date: '' }));
+                  }}
+                />
+              </RangeInputIcon>
             </DateInput>
           </InputBar>
         </DateRange>
 
-        <DatePickerPanel>
+        <DatePickerPanel isInputFocused={isInputFocused}>
           <DatePicker>
             <DateHeader>
-              <button className="super-prev-btn"></button>
-              <button className="prev-btn"></button>
-              <div className="header-view">
-                <span>Nov</span>
-                <span>2023</span>
-              </div>
-              <button className="next-btn"></button>
-              <button className="super-next-btn"></button>
+              <button className="super-prev-btn" onClick={() => setTargetTime((prev) => prev.subtract(1, 'year'))} />
+              <button className="prev-btn" onClick={() => setTargetTime((prev) => prev.subtract(1, 'month'))} />
+              <div className="header-view">{headerView()}</div>
+              <button className="next-btn" onClick={() => setTargetTime((prev) => prev.add(1, 'month'))} />
+              <button className="super-next-btn" onClick={() => setTargetTime((prev) => prev.add(1, 'year'))} />
             </DateHeader>
             <DateBody>
               <table>
@@ -111,7 +139,10 @@ function generateSignlePicker() {
   return SinglePicker;
 }
 
-const Containter = styled.div``;
+const Containter = styled.div`
+  position: relative;
+  display: inline-block;
+`;
 
 interface DateRangeProps {
   isInputFocused: boolean;
@@ -173,18 +204,129 @@ const DateInput = styled.div<DateInputProps>`
     }
   }
 
-  & svg {
-    font-size: 18px;
-    color: #cacaca;
-  }
+  /* & .input-icon {
+    position: relative;
+    width: 14px;
+    height: 14px;
+    & svg {
+      position: absolute;
+      font-size: 18px;
+      color: #cacaca;
+      transition: all 0.5s ease;
+
+      &.calendar {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      &.clear {
+        visibility: hidden;
+        opacity: 0;
+        &:hover {
+          color: #747474;
+        }
+      }
+
+      &.calendar.show,
+      &.clear.show {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      &.calender.hide,
+      &.clear.hide {
+        visibility: hidden;
+        opacity: 0;
+      }
+    }
+  } */
 `;
 
-const DatePickerPanel = styled.div`
+interface RangeInputIconProps {
+  rangeInputIcon: 'calendar' | 'clear';
+}
+const RangeInputIcon = styled.span<RangeInputIconProps>`
+  position: relative;
+  width: 14px;
+  height: 14px;
+  & svg {
+    position: absolute;
+    font-size: 18px;
+    color: #cacaca;
+    transition: all 0.5s ease;
+
+    &.calendar {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    &.clear {
+      cursor: pointer;
+      visibility: hidden;
+      opacity: 0;
+      &:hover {
+        color: #747474;
+      }
+    }
+  }
+
+  ${({ rangeInputIcon }) =>
+    rangeInputIcon === 'calendar'
+      ? css`
+          & svg.calendar {
+            visibility: visible;
+            opacity: 1;
+          }
+
+          & svg.clear {
+            visibility: hidden;
+            opacity: 0;
+          }
+        `
+      : css`
+          & svg.calendar {
+            visibility: hidden;
+            opacity: 0;
+          }
+          & svg.clear {
+            visibility: visible;
+            opacity: 1;
+          }
+        `}
+`;
+
+interface DatePickerPanelProps {
+  isInputFocused: boolean;
+}
+const DatePickerPanel = styled.div<DatePickerPanelProps>`
   height: 309px;
   width: 288px;
   display: flex;
   border-radius: 8px;
   box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+  margin: 5px 0;
+
+  position: absolute;
+  left: 0;
+  transform-origin: top left;
+
+  visibility: ${({ isInputFocused }) => (isInputFocused ? 'visible' : 'hidden')};
+
+  @keyframes dropdown {
+    0% {
+      opacity: 0;
+      visibility: hidden;
+      transform: scaleY(0%);
+    }
+    30% {
+      opacity: 0.5;
+      transform: scaleY(100%);
+    }
+    100% {
+      opacity: 1;
+      transform: scaleY(100%);
+    }
+  }
 `;
 const DatePicker = styled.div`
   width: 100%;
@@ -312,7 +454,7 @@ const DateBody = styled.div`
         td {
           cursor: pointer;
           text-align: center;
-          padding: 8px;
+          padding: 5px;
 
           & > span {
             width: 100%;
@@ -337,6 +479,13 @@ const DateBody = styled.div`
               height: inherit;
               box-shadow: 0 0 0 1px var(--point-blue);
               border-radius: 5px;
+            }
+          }
+
+          &.selectedDate {
+            & span {
+              background-color: var(--point-blue);
+              color: white;
             }
           }
 

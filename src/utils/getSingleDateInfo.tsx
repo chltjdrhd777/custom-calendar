@@ -1,20 +1,33 @@
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { getClassName } from './getClassName';
+import { Dispatch, SetStateAction } from 'react';
 
 interface GetSignleDateInfoParams {
   targetTime?: Dayjs;
-  setInputValue?: React.Dispatch<
-    React.SetStateAction<{
+  setTargetTime?: Dispatch<SetStateAction<dayjs.Dayjs>>;
+  setInputValue?: Dispatch<
+    SetStateAction<{
       decade: string;
       year: string;
       month: string;
       date: string;
     }>
   >;
+  selectedValue?: string;
+  setSelectedValue?: Dispatch<SetStateAction<string>>;
+  setIsInputFocused?: Dispatch<SetStateAction<boolean>>;
 }
 
-export function getSignleDateInfo({ targetTime, setInputValue }: GetSignleDateInfoParams = {}) {
+export function getSignleDateInfo({
+  targetTime,
+  setTargetTime,
+  setInputValue,
+  selectedValue,
+  setSelectedValue,
+  setIsInputFocused,
+}: GetSignleDateInfoParams = {}) {
+  const _dayjs = dayjs();
   const _targetTime = targetTime ?? dayjs();
   const prevMonth = _targetTime.subtract(1, 'month').endOf('month');
   const currentMonth = _targetTime.date(1);
@@ -48,7 +61,7 @@ export function getSignleDateInfo({ targetTime, setInputValue }: GetSignleDateIn
       const restDatesLength = 42 - mergedDates.length;
 
       for (let i = 1; i <= restDatesLength; i++) {
-        const lastNextDate = nextDates[nextDates.length - 1];
+        const lastNextDate = nextDates[nextDates.length - 1] ?? currentDates[currentDates.length - 1];
         nextDates.push(lastNextDate.add(1, 'day'));
       }
     }
@@ -59,39 +72,66 @@ export function getSignleDateInfo({ targetTime, setInputValue }: GetSignleDateIn
     const isSameDate = firstMetaDate.date() === secondMetadate.date();
     return isSameYear && isSameMonth && isSameDate;
   };
+  const getTransformedDate = (metaDate: Dayjs, blacklist: ('year' | 'month' | 'date')[] = []) => {
+    const transformedDate = {
+      year: String(metaDate.year()),
+      month: _dayjs.month(metaDate.month()).format('MM'),
+      date: _dayjs.date(metaDate.date()).format('DD'),
+    };
+
+    if (blacklist.length) {
+      blacklist.forEach((blacklist) => {
+        delete transformedDate[blacklist];
+      });
+    }
+
+    return transformedDate;
+  };
+  const setResultInputValue = (metaDate: Dayjs) => {
+    const { year, month, date } = getTransformedDate(metaDate);
+    setInputValue && setInputValue((prev) => ({ ...prev, year, month, date }));
+  };
+
+  const onMouseEnter = (metaDate: Dayjs) => {
+    setResultInputValue(metaDate);
+  };
+  const onMouseLeave = () => {
+    if (!selectedValue) {
+      setInputValue && setInputValue((prev) => ({ ...prev, date: '' }));
+    } else {
+      const selectedDate = dayjs(selectedValue);
+      setResultInputValue(selectedDate);
+    }
+  };
+  const onClick = (metaDate: Dayjs) => {
+    setResultInputValue(metaDate);
+    setTargetTime && setTargetTime(metaDate);
+    setSelectedValue && setSelectedValue(metaDate.format('YYYY-MM-DD'));
+    setIsInputFocused && setIsInputFocused(false);
+  };
 
   calculatePrevDates(prevDates);
   calculateNextDates(prevDates, currentDates, nextDates);
-
-  const onMouseEnter = (metaDate: Dayjs) => {
-    const _dayjs = dayjs();
-    const year = String(metaDate.year());
-    const month = _dayjs.month(metaDate.month()).format('M');
-    const date = _dayjs.date(metaDate.date()).format('DD');
-    setInputValue && setInputValue((prev) => ({ ...prev, year, month, date }));
-  };
-  const onMouseLeave = () => {};
-  const onClick = (metaDate: Dayjs) => {
-    const _dayjs = dayjs();
-    const year = String(metaDate.year());
-    const month = _dayjs.month(metaDate.month()).format('M');
-    const date = _dayjs.date(metaDate.date()).format('DD');
-    setInputValue && setInputValue((prev) => ({ ...prev, year, month, date }));
-  };
 
   return {
     prevDates: prevDates.map((metaData) => {
       const className = getClassName(['date', 'extra-date']);
 
       return (
-        <td className={className} onMouseEnter={(e) => onMouseEnter(metaData)} onMouseLeave={(e) => onMouseLeave()}>
+        <td
+          className={className}
+          onMouseEnter={(e) => onMouseEnter(metaData)}
+          onMouseLeave={(e) => onMouseLeave()}
+          onClick={(e) => onClick(metaData)}
+        >
           <span>{metaData.date()}</span>
         </td>
       );
     }),
     currentDates: currentDates.map((metaData) => {
       const isToday = isSameDate(metaData, dayjs());
-      const className = getClassName(['date', { today: isToday }]);
+      const isSelectedDate = isSameDate(metaData, dayjs(selectedValue));
+      const className = getClassName(['date', { today: isToday }, { selectedDate: isSelectedDate }]);
 
       return (
         <td
@@ -108,7 +148,12 @@ export function getSignleDateInfo({ targetTime, setInputValue }: GetSignleDateIn
       const className = getClassName(['date', 'extra-date']);
 
       return (
-        <td className={className} onMouseEnter={(e) => onMouseEnter(metaData)} onMouseLeave={(e) => onMouseLeave()}>
+        <td
+          className={className}
+          onMouseEnter={(e) => onMouseEnter(metaData)}
+          onMouseLeave={(e) => onMouseLeave()}
+          onClick={(e) => onClick(metaData)}
+        >
           <span>{metaData.date()}</span>
         </td>
       );
