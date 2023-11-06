@@ -5,8 +5,8 @@ import { Dispatch, SetStateAction } from 'react';
 
 interface GetSignleDateInfoParams {
   targetTime?: Dayjs;
-  isPickerOpen?: boolean;
-  setIsPickerOpen?: Dispatch<SetStateAction<boolean>>;
+  isPickerOpen?: null | boolean;
+  setIsPickerOpen?: Dispatch<SetStateAction<null | boolean>>;
   setTargetTime?: Dispatch<SetStateAction<dayjs.Dayjs>>;
   setInputValue?: Dispatch<
     SetStateAction<{

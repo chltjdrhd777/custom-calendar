@@ -17,7 +17,7 @@ interface DefaultProps {
 function generateSignlePicker() {
   const SinglePicker = ({ additionalCSS }: DefaultProps) => {
     const [isInputFocused, setIsInputFocused] = useState(false);
-    const [isPickerOpen, setIsPickerOpen] = useState(false);
+    const [isPickerOpen, setIsPickerOpen] = useState<null | boolean>(null);
     const [targetTime, setTargetTime] = useState(dayjs());
     const [selectedValue, setSelectedValue] = useState('');
     const [inputValue, setInputValue] = useState({
@@ -70,7 +70,7 @@ function generateSignlePicker() {
     useHandleClickOutside(ContainerRef, () => {
       InputRef.current?.blur();
       setIsInputFocused(false);
-      setIsPickerOpen(false);
+      setIsPickerOpen((prev) => (prev === null ? null : false));
     });
 
     return (
@@ -290,7 +290,10 @@ const DatePickerPanel = styled.div`
   position: absolute;
   left: 0;
   transform-origin: top left;
-  /* top: -350px; */
+
+  opacity: 0;
+  visibility: hidden;
+  transform: scaleY(0%);
 
   &.dropdown {
     animation: dropdown 0.4s forwards;
@@ -308,10 +311,12 @@ const DatePickerPanel = styled.div`
     }
     30% {
       opacity: 0.5;
+      visibility: visible;
       transform: scaleY(100%);
     }
     100% {
       opacity: 1;
+      visibility: visible;
       transform: scaleY(100%);
     }
   }

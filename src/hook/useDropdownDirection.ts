@@ -1,9 +1,5 @@
 import { MutableRefObject, useEffect } from 'react';
 
-interface UseDropdownDirectionRrops {
-  DateRangeRef: MutableRefObject<HTMLDivElement | null>;
-  DatePickerPanelRef: MutableRefObject<HTMLInputElement | null>;
-}
 function useDropdownDirection(
   DateRangeRef: MutableRefObject<HTMLDivElement | null>,
   DatePickerPanelRef: MutableRefObject<HTMLDivElement | null>,
