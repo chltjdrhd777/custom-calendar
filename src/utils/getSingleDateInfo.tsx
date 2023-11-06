@@ -5,6 +5,8 @@ import { Dispatch, SetStateAction } from 'react';
 
 interface GetSignleDateInfoParams {
   targetTime?: Dayjs;
+  isPickerOpen?: boolean;
+  setIsPickerOpen?: Dispatch<SetStateAction<boolean>>;
   setTargetTime?: Dispatch<SetStateAction<dayjs.Dayjs>>;
   setInputValue?: Dispatch<
     SetStateAction<{
@@ -21,6 +23,8 @@ interface GetSignleDateInfoParams {
 
 export function getSignleDateInfo({
   targetTime,
+  isPickerOpen,
+  setIsPickerOpen,
   setTargetTime,
   setInputValue,
   selectedValue,
@@ -107,7 +111,7 @@ export function getSignleDateInfo({
     setResultInputValue(metaDate);
     setTargetTime && setTargetTime(metaDate);
     setSelectedValue && setSelectedValue(metaDate.format('YYYY-MM-DD'));
-    setIsInputFocused && setIsInputFocused(false);
+    setIsPickerOpen && setIsPickerOpen(false);
   };
 
   calculatePrevDates(prevDates);
@@ -158,5 +162,6 @@ export function getSignleDateInfo({
         </td>
       );
     }),
+    onClick,
   } as const;
 }

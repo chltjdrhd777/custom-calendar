@@ -1,15 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { css, styled } from 'styled-components';
+import { RuleSet, css, styled } from 'styled-components';
 import { AiOutlineCalendar, AiFillCloseCircle } from 'react-icons/ai';
 import { getDays } from '../utils/getDays';
 import { getSignleDateInfo } from '../utils/getSingleDateInfo';
 import dayjs from 'dayjs';
 import { getDates } from '../utils/getDates';
 import { useHandleClickOutside } from '../hook/useHandleClickOutside';
+import useDropdownAnimation from '../hook/useDropdownAnimation';
+import useInputFocus from '../hook/useInputFocus';
+import useDropdownDirection from '../hook/useDropdownDirection';
+
+interface DefaultProps {
+  additionalCSS?: RuleSet<object>;
+}
 
 function generateSignlePicker() {
-  const SinglePicker = () => {
+  const SinglePicker = ({ additionalCSS }: DefaultProps) => {
     const [isInputFocused, setIsInputFocused] = useState(false);
+    const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [targetTime, setTargetTime] = useState(dayjs());
     const [selectedValue, setSelectedValue] = useState('');
     const [inputValue, setInputValue] = useState({
@@ -23,9 +31,12 @@ function generateSignlePicker() {
     const DateRangeRef = useRef<null | HTMLDivElement>(null);
     const InputRef = useRef<null | HTMLInputElement>(null);
     const ContainerRef = useRef<null | HTMLDivElement>(null);
+    const DatePickerPanelRef = useRef<null | HTMLDivElement>(null);
 
-    const { prevDates, currentDates, nextDates } = getSignleDateInfo({
+    const { prevDates, currentDates, nextDates, onClick } = getSignleDateInfo({
       targetTime,
+      isPickerOpen,
+      setIsPickerOpen,
       setTargetTime,
       setInputValue,
       selectedValue,
@@ -51,23 +62,24 @@ function generateSignlePicker() {
       return valueList.includes('') ? '' : `${inputValue.year}-${inputValue.month}-${inputValue.date}`;
     };
 
-    useEffect(() => {
-      // if (inputValue.year || inputValue.month || inputValue.date) {
-      //   InputRef.current?.focus();
-      // }
-    }, [inputValue]);
+    useInputFocus(inputValue, InputRef);
+
+    useDropdownAnimation(DatePickerPanelRef, isPickerOpen);
+    useDropdownDirection(DateRangeRef, DatePickerPanelRef);
 
     useHandleClickOutside(ContainerRef, () => {
       InputRef.current?.blur();
       setIsInputFocused(false);
+      setIsPickerOpen(false);
     });
 
     return (
-      <Containter ref={ContainerRef}>
+      <Containter ref={ContainerRef} additionalCSS={additionalCSS}>
         <DateRange
           ref={DateRangeRef}
           onClick={() => {
             InputRef.current?.focus();
+            setIsPickerOpen(true);
           }}
           isInputFocused={isInputFocused}
         >
@@ -102,6 +114,8 @@ function generateSignlePicker() {
                     e.stopPropagation();
                     setSelectedValue('');
                     setInputValue((prev) => ({ ...prev, date: '' }));
+                    setIsInputFocused(false);
+                    setIsPickerOpen(false);
                   }}
                 />
               </RangeInputIcon>
@@ -109,7 +123,7 @@ function generateSignlePicker() {
           </InputBar>
         </DateRange>
 
-        <DatePickerPanel isInputFocused={isInputFocused}>
+        <DatePickerPanel ref={DatePickerPanelRef}>
           <DatePicker>
             <DateHeader>
               <button className="super-prev-btn" onClick={() => setTargetTime((prev) => prev.subtract(1, 'year'))} />
@@ -131,6 +145,10 @@ function generateSignlePicker() {
               </table>
             </DateBody>
           </DatePicker>
+
+          <TodayBtn>
+            <span onClick={() => onClick(dayjs())}>Today</span>
+          </TodayBtn>
         </DatePickerPanel>
       </Containter>
     );
@@ -139,9 +157,11 @@ function generateSignlePicker() {
   return SinglePicker;
 }
 
-const Containter = styled.div`
+const Containter = styled.div<Pick<DefaultProps, 'additionalCSS'>>`
   position: relative;
   display: inline-block;
+
+  ${({ additionalCSS }) => additionalCSS && additionalCSS}
 `;
 
 interface DateRangeProps {
@@ -203,43 +223,6 @@ const DateInput = styled.div<DateInputProps>`
       color: #cacaca;
     }
   }
-
-  /* & .input-icon {
-    position: relative;
-    width: 14px;
-    height: 14px;
-    & svg {
-      position: absolute;
-      font-size: 18px;
-      color: #cacaca;
-      transition: all 0.5s ease;
-
-      &.calendar {
-        visibility: visible;
-        opacity: 1;
-      }
-
-      &.clear {
-        visibility: hidden;
-        opacity: 0;
-        &:hover {
-          color: #747474;
-        }
-      }
-
-      &.calendar.show,
-      &.clear.show {
-        visibility: visible;
-        opacity: 1;
-      }
-
-      &.calender.hide,
-      &.clear.hide {
-        visibility: hidden;
-        opacity: 0;
-      }
-    }
-  } */
 `;
 
 interface RangeInputIconProps {
@@ -295,22 +278,27 @@ const RangeInputIcon = styled.span<RangeInputIconProps>`
         `}
 `;
 
-interface DatePickerPanelProps {
-  isInputFocused: boolean;
-}
-const DatePickerPanel = styled.div<DatePickerPanelProps>`
-  height: 309px;
+const DatePickerPanel = styled.div`
+  min-height: 309px;
   width: 288px;
+  background-color: white;
   display: flex;
+  flex-direction: column;
   border-radius: 8px;
   box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
   margin: 5px 0;
-
   position: absolute;
   left: 0;
   transform-origin: top left;
+  /* top: -350px; */
 
-  visibility: ${({ isInputFocused }) => (isInputFocused ? 'visible' : 'hidden')};
+  &.dropdown {
+    animation: dropdown 0.4s forwards;
+  }
+
+  &.dropdown-reverse {
+    animation: dropdown 0.3s forwards reverse;
+  }
 
   @keyframes dropdown {
     0% {
@@ -331,13 +319,14 @@ const DatePickerPanel = styled.div<DatePickerPanelProps>`
 const DatePicker = styled.div`
   width: 100%;
   height: 100%;
+  min-height: 268px;
   display: flex;
   flex-direction: column;
 `;
 const DateHeader = styled.div`
   display: flex;
   height: 40px;
-  padding: 0 19px;
+  padding: 0 22px;
   border-bottom: 1px solid rgba(5, 5, 5, 0.06);
 
   & button {
@@ -452,6 +441,7 @@ const DateBody = styled.div`
 
       & tr {
         td {
+          height: 36px;
           cursor: pointer;
           text-align: center;
           padding: 5px;
@@ -494,6 +484,22 @@ const DateBody = styled.div`
           }
         }
       }
+    }
+  }
+`;
+
+const TodayBtn = styled.button`
+  height: 39px;
+  background-color: transparent;
+  border: none;
+  border-top: 1px solid rgba(5, 5, 5, 0.06);
+
+  & span {
+    cursor: pointer;
+    color: var(--point-blue);
+    transition: color 0.3s ease;
+    &:hover {
+      color: var(--point-darksky);
     }
   }
 `;
